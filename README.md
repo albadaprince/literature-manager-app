@@ -14,13 +14,13 @@ This project was developed through a collaborative process between Alba assisted
 The initial objective was to create an interactive tool to help a research assistant collect, summarize, and manage academic literature. The key requirement was to facilitate discussion with a professor by allowing for the rating and selection of benchmark papers for a research project.
 
 2. Tools and Technologies Used
-Frontend Framework: React
-Styling: Tailwind CSS
-Build Tool: Vite
-Backend Database: Google Firestore
-Authentication: Firebase Authentication (Anonymous)
-Code Hosting: GitHub
-Deployment & Hosting: Netlify
+  Frontend Framework: React
+  Styling: Tailwind CSS
+  Build Tool: Vite
+  Backend Database: Google Firestore
+  Authentication: Firebase Authentication (Anonymous)
+  Code Hosting: GitHub
+  Deployment & Hosting: Netlify
 
 3. Initial Prototype: Local State
 The first version of the application was built as a standalone React component.
