@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Edit, Star, Search, X, ChevronDown, ChevronUp, BookOpen, CheckCircle, Target, User, Lightbulb, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit, Star, Search, X, ChevronDown, ChevronUp, BookOpen, CheckCircle, Target, User, Lightbulb, Loader2, KeyRound } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
@@ -15,17 +15,10 @@ import {
 } from 'firebase/firestore';
 
 // ===================================================================================
-// === IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION HERE =============================
-// ===================================================================================
-// 1. Go to the Firebase Console (https://console.firebase.google.com/).
-// 2. Create a new project or select your existing one.
-// 3. Go to Project Settings (click the gear icon).
-// 4. In the "General" tab, scroll down to "Your apps".
-// 5. Click the web icon (</>) to register a new web app.
-// 6. Firebase will give you a `firebaseConfig` object. Copy it and paste it below,
-//    replacing the placeholder object.
+// === CONFIGURATION =================================================================
 // ===================================================================================
 
+// PASTE YOUR FIREBASE CONFIGURATION HERE
 const firebaseConfig = {
   apiKey: "AIzaSyDyIW3WGXIZd5UM75IZzeiYpnNZmJgsoNw",
   authDomain: "literature-manager-v1.firebaseapp.com",
@@ -35,6 +28,10 @@ const firebaseConfig = {
   appId: "1:634669415150:web:79dae9bc3702ac5dba51ff"
 };
 
+// SET YOUR SIMPLE, SHARED PASSWORD HERE
+const SHARED_PASSWORD = "kajimaproject"; // Change this to your desired password
+
+// ===================================================================================
 
 // --- Helper Components ---
 
@@ -88,53 +85,39 @@ const App = () => {
 
   // --- Firebase Initialization and Auth Effect ---
   useEffect(() => {
-    if (!firebaseConfig || firebaseConfig.apiKey === "PASTE_YOUR_API_KEY_HERE") {
-        console.error("Firebase config is not set. Please paste your config object.");
+    if (!firebaseConfig || firebaseConfig.apiKey.includes("PASTE")) {
+        console.error("Firebase config is not set.");
         setIsLoading(false);
         return;
     }
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const firestoreDb = getFirestore(app);
-    // setLogLevel('debug'); // Uncomment for detailed Firebase logs
     setDb(firestoreDb);
-
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             setIsAuthReady(true);
         } else {
-            try {
-                await signInAnonymously(auth);
-            } catch (error) {
-                console.error("Anonymous authentication failed:", error);
-            }
+            try { await signInAnonymously(auth); } catch (error) { console.error(error); }
         }
     });
-
     setWelcomeMessage(encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)]);
   }, []);
 
   // --- Firestore Data Fetching Effect ---
   useEffect(() => {
     if (db && isAuthReady) {
-      // This is the collection name in your own Firestore database.
       const literatureCollection = collection(db, 'literature');
       const q = query(literatureCollection);
-
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const literatureData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const literatureData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setLiterature(literatureData);
         setIsLoading(false);
       }, (error) => {
-        console.error("Error fetching literature data: ", error);
+        console.error("Error fetching data: ", error);
         setIsLoading(false);
       });
-      
-      return () => unsubscribe(); // Cleanup subscription on unmount
+      return () => unsubscribe();
     }
   }, [db, isAuthReady]);
 
@@ -160,65 +143,35 @@ const App = () => {
   
   // --- UI Handlers ---
   const handleSort = (key) => {
-    setSortConfig(current => ({
-      key,
-      direction: current.key === key && current.direction === 'ascending' ? 'descending' : 'ascending'
-    }));
+    setSortConfig(current => ({ key, direction: current.key === key && current.direction === 'ascending' ? 'descending' : 'ascending' }));
   };
-
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return <ChevronDown className="w-4 h-4 text-gray-400 opacity-50" />;
     return sortConfig.direction === 'ascending' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />;
   }
-
-  const openModal = (entry = null) => {
-    setEditingEntry(entry);
-    setIsModalOpen(true);
-  };
-  
-  const closeModal = () => {
-    setEditingEntry(null);
-    setIsModalOpen(false);
-  };
-
+  const openModal = (entry = null) => { setEditingEntry(entry); setIsModalOpen(true); };
+  const closeModal = () => { setEditingEntry(null); setIsModalOpen(false); };
   const openDeleteConfirm = (id) => setShowDeleteConfirm(id);
   const closeDeleteConfirm = () => setShowDeleteConfirm(null);
 
   // --- Firestore CRUD Operations ---
   const handleSave = useCallback(async (entryData) => {
     if (!db) return;
-    const literatureCollection = collection(db, 'literature');
     try {
-      if (editingEntry) {
-        const docRef = doc(db, 'literature', editingEntry.id);
-        await updateDoc(docRef, entryData);
-      } else {
-        await addDoc(literatureCollection, entryData);
-      }
+      if (editingEntry) { await updateDoc(doc(db, 'literature', editingEntry.id), entryData); } 
+      else { await addDoc(collection(db, 'literature'), entryData); }
       closeModal();
-    } catch (error) {
-      console.error("Error saving document: ", error);
-    }
+    } catch (error) { console.error("Error saving document: ", error); }
   }, [db, editingEntry]);
-
   const handleDelete = useCallback(async (id) => {
     if (!db || !id) return;
-    try {
-      await deleteDoc(doc(db, 'literature', id));
-      closeDeleteConfirm();
-    } catch(error) {
-      console.error("Error deleting document: ", error);
-      closeDeleteConfirm();
-    }
+    try { await deleteDoc(doc(db, 'literature', id)); closeDeleteConfirm(); } 
+    catch(error) { console.error("Error deleting document: ", error); closeDeleteConfirm(); }
   }, [db]);
-
   const handleStatusChange = useCallback(async (id, newStatus) => {
     if (!db) return;
-    try {
-      await updateDoc(doc(db, 'literature', id), { status: newStatus });
-    } catch(error) {
-      console.error("Error updating status: ", error);
-    }
+    try { await updateDoc(doc(db, 'literature', id), { status: newStatus }); } 
+    catch(error) { console.error("Error updating status: ", error); }
   }, [db]);
 
   // --- Render ---
@@ -239,7 +192,6 @@ const App = () => {
             <p className="mt-2 text-lg text-gray-600">Kajima Project 2025-2027</p>
             <p className="mt-3 text-md text-blue-600 font-semibold">{welcomeMessage}</p>
         </div>
-
         <div className="mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="relative md:col-span-1">
@@ -260,14 +212,13 @@ const App = () => {
                 </div>
             </div>
         </div>
-
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm text-left text-gray-500">
             <thead className="text-xs text-gray-700 uppercase bg-gray-100">
               <tr>
                 <th scope="col" className="px-4 py-3 w-1/5 cursor-pointer" onClick={() => handleSort('title')}><div className="flex items-center">Title {getSortIcon('title')}</div></th>
                 <th scope="col" className="px-4 py-3 w-1/6 cursor-pointer" onClick={() => handleSort('authors')}><div className="flex items-center">Authors {getSortIcon('authors')}</div></th>
-                <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('topic')}><div className="flex items-center">Topic {getSortIcon('topic')}</div></th>
+                <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('year')}><div className="flex items-center">Year {getSortIcon('year')}</div></th>
                 <th scope="col" className="px-4 py-3 w-1/5">Summary</th>
                 <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('relevance')}><div className="flex items-center">Relevance {getSortIcon('relevance')}</div></th>
                 <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
@@ -280,7 +231,7 @@ const App = () => {
                 <tr key={item.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4 font-bold text-gray-900">{item.title}</td>
                   <td className="px-4 py-4 text-gray-600">{item.authors}</td>
-                  <td className="px-4 py-4">{item.topic}</td>
+                  <td className="px-4 py-4">{item.year}</td>
                   <td className="px-4 py-4 text-xs">{item.summary}</td>
                   <td className="px-4 py-4"><RatingStars rating={item.relevance} readOnly={true} /></td>
                   <td className="px-4 py-4">
@@ -299,7 +250,7 @@ const App = () => {
               ))}
             </tbody>
           </table>
-           {filteredAndSortedLiterature.length === 0 && (
+           {filteredAndSortedLiterature.length === 0 && !isLoading && (
               <div className="text-center py-16">
                   <h3 className="text-xl font-semibold text-gray-700">No Literature Found</h3>
                   <p className="text-gray-500 mt-2">Start by adding your first research paper!</p>
@@ -307,7 +258,6 @@ const App = () => {
           )}
         </div>
       </div>
-
       {isModalOpen && <LiteratureModal entry={editingEntry} onSave={handleSave} onClose={closeModal} />}
       {showDeleteConfirm && <DeleteConfirmModal onConfirm={() => handleDelete(showDeleteConfirm)} onCancel={closeDeleteConfirm}/>}
     </div>
@@ -325,29 +275,21 @@ const LiteratureModal = ({ entry, onSave, onClose }) => {
         summary: '', findings: '', method: '', contributions: '',
         relevance: 2, status: statusOptions[0],
     });
-
     useEffect(() => { if (entry) setFormData(entry) }, [entry]);
-
     const handleChange = (e) => {
         const { name, value, type } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value, 10) : value }));
     };
-    
     const handleRatingChange = (newRating) => setFormData(prev => ({ ...prev, relevance: newRating }));
-
     const handleSubmit = (e) => {
         e.preventDefault();
-        const { id, ...dataToSave } = formData; // Exclude 'id' from data being saved
+        const { id, ...dataToSave } = formData;
         onSave(dataToSave);
     };
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                <div className="flex justify-between items-center p-6 border-b">
-                    <h2 className="text-2xl font-bold text-gray-800">{entry ? 'Edit Literature' : 'Add New Literature'}</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
-                </div>
+                <div className="flex justify-between items-center p-6 border-b"><h2 className="text-2xl font-bold text-gray-800">{entry ? 'Edit Literature' : 'Add New Literature'}</h2><button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button></div>
                 <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto">
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
                         <div className="lg:col-span-2"><label htmlFor="title" className="label">Title</label><input type="text" name="title" id="title" value={formData.title} onChange={handleChange} className="form-input" required /></div>
@@ -365,48 +307,77 @@ const LiteratureModal = ({ entry, onSave, onClose }) => {
                         <div><label className="label">Relevance Score</label><RatingStars rating={formData.relevance} onRatingChange={handleRatingChange} /></div>
                         <div><label htmlFor="pic" className="label">Person In Charge (PIC)</label><select name="pic" id="pic" value={formData.pic} onChange={handleChange} className="form-input">{picOptions.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
                     </div>
-                    <div className="p-6 bg-gray-50 border-t flex justify-end items-center space-x-4">
-                        <button type="button" onClick={onClose} className="bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">Cancel</button>
-                        <button type="submit" className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700">Save</button>
-                    </div>
+                    <div className="p-6 bg-gray-50 border-t flex justify-end items-center space-x-4"><button type="button" onClick={onClose} className="bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">Cancel</button><button type="submit" className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700">Save</button></div>
                 </form>
             </div>
         </div>
     );
 };
-
 const DeleteConfirmModal = ({ onConfirm, onCancel }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-                 <div className="p-8 text-center">
-                     <Trash2 className="w-16 h-16 text-red-500 mx-auto mb-4"/>
-                     <h3 className="text-xl font-bold text-gray-800">Are you sure?</h3>
-                     <p className="text-gray-600 mt-2">Do you really want to delete this entry? This process cannot be undone.</p>
-                 </div>
-                 <div className="p-4 bg-gray-50 flex justify-center items-center space-x-4 rounded-b-2xl">
-                     <button onClick={onCancel} className="bg-white text-gray-700 px-6 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 font-semibold">Cancel</button>
-                     <button onClick={onConfirm} className="bg-red-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-red-700">Delete</button>
-                 </div>
-            </div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"><div className="p-8 text-center"><Trash2 className="w-16 h-16 text-red-500 mx-auto mb-4"/><h3 className="text-xl font-bold text-gray-800">Are you sure?</h3><p className="text-gray-600 mt-2">Do you really want to delete this entry? This process cannot be undone.</p></div><div className="p-4 bg-gray-50 flex justify-center items-center space-x-4 rounded-b-2xl"><button onClick={onCancel} className="bg-white text-gray-700 px-6 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 font-semibold">Cancel</button><button onClick={onConfirm} className="bg-red-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-red-700">Delete</button></div></div>
         </div>
     )
 }
 
-const GlobalStyles = () => (
-    <style jsx global>{`
-      .label { display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 500; color: #374151; }
-      .form-input, .form-textarea { display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 1rem; color: #333; border: 1px solid #d1d5db; border-radius: 0.5rem; transition: all 0.15s ease-in-out; }
-      .form-input:focus, .form-textarea:focus { outline: 0; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
-    `}</style>
-);
+const PasswordGate = ({ onAuthenticated }) => {
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
 
-// We need a wrapper for global styles in React
-const AppWrapper = () => (
-    <>
-        <GlobalStyles />
-        <App />
-    </>
-)
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (password === SHARED_PASSWORD) {
+            onAuthenticated(true);
+            sessionStorage.setItem('isAuthenticated', 'true');
+        } else {
+            setError('Incorrect password. Please try again.');
+        }
+    };
+
+    return (
+        <div className="bg-gray-100 min-h-screen flex flex-col justify-center items-center">
+            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+                <KeyRound className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+                <h1 className="text-2xl font-bold text-gray-800 mb-2">Access Required</h1>
+                <p className="text-gray-600 mb-6">Please enter the password to access the Literature Manager.</p>
+                <form onSubmit={handleSubmit}>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                        className="form-input w-full text-center"
+                        placeholder="Enter password"
+                    />
+                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                    <button type="submit" className="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                        Enter
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+
+const GlobalStyles = () => (<style jsx global>{`.label{display:block;margin-bottom:.25rem;font-size:.875rem;font-weight:500;color:#374151}.form-input,.form-textarea{display:block;width:100%;padding:.5rem .75rem;font-size:1rem;color:#333;border:1px solid #d1d5db;border-radius:.5rem;transition:all .15s ease-in-out}.form-input:focus,.form-textarea:focus{outline:0;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25)}`}</style>);
+
+// The AppWrapper now manages the password authentication state
+const AppWrapper = () => {
+    const [isAuthenticated, setIsAuthenticated] = useState(
+        sessionStorage.getItem('isAuthenticated') === 'true'
+    );
+
+    if (!isAuthenticated) {
+        return <PasswordGate onAuthenticated={setIsAuthenticated} />;
+    }
+    
+    return (
+        <>
+            <GlobalStyles />
+            <App />
+        </>
+    );
+}
 
 export default AppWrapper;
