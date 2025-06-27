@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Edit, Star, Search, X, ChevronDown, ChevronUp, BookOpen, CheckCircle, Target, User, Lightbulb, Loader2, KeyRound } from 'lucide-react';
+import { Plus, Trash2, Edit, Star, Search, X, ChevronDown, ChevronUp, BookOpen, CheckCircle, Target, User, Lightbulb, Loader2, KeyRound, Link as LinkIcon } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
@@ -19,7 +19,6 @@ import {
 // ===================================================================================
 // These variables are now read securely from your Netlify Environment Variables.
 // Go to your Netlify Site -> Site settings -> Build & deploy -> Environment
-// and add the keys and values as instructed in your chat.
 // ===================================================================================
 
 const firebaseConfig = {
@@ -225,6 +224,7 @@ const App = () => {
                 <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('relevance')}><div className="flex items-center">Relevance {getSortIcon('relevance')}</div></th>
                 <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
                 <th scope="col" className="px-4 py-3 cursor-pointer" onClick={() => handleSort('pic')}><div className="flex items-center">PIC {getSortIcon('pic')}</div></th>
+                <th scope="col" className="px-4 py-3 text-center">Link</th>
                 <th scope="col" className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
@@ -242,6 +242,13 @@ const App = () => {
                     </select>
                   </td>
                   <td className="px-4 py-4">{item.pic}</td>
+                  <td className="px-4 py-4 text-center">
+                    {item.link && (
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 transition-colors inline-block">
+                        <LinkIcon className="w-5 h-5" />
+                      </a>
+                    )}
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-center space-x-3">
                         <button onClick={() => openModal(item)} className="text-blue-600 hover:text-blue-800"><Edit className="w-5 h-5" /></button>
@@ -275,7 +282,7 @@ const LiteratureModal = ({ entry, onSave, onClose }) => {
         title: '', authors: '', year: new Date().getFullYear(), publication: '',
         topic: '', data: '', unitOfObservations: '', pic: picOptions[0],
         summary: '', findings: '', method: '', contributions: '',
-        relevance: 2, status: statusOptions[0],
+        relevance: 2, status: statusOptions[0], link: ''
     });
     useEffect(() => { if (entry) setFormData(entry) }, [entry]);
     const handleChange = (e) => {
@@ -298,13 +305,24 @@ const LiteratureModal = ({ entry, onSave, onClose }) => {
                         <div><label htmlFor="year" className="label">Year</label><input type="number" name="year" id="year" value={formData.year} onChange={handleChange} className="form-input" required /></div>
                         <div className="lg:col-span-2"><label htmlFor="authors" className="label">Authors</label><input type="text" name="authors" id="authors" value={formData.authors} onChange={handleChange} className="form-input" required /></div>
                         <div><label htmlFor="publication" className="label">Journal / Conference</label><input type="text" name="publication" id="publication" value={formData.publication} onChange={handleChange} className="form-input" /></div>
+                        
+                        <div className="lg:col-span-3">
+                           <label htmlFor="link" className="label">Article Link</label>
+                           <input type="url" name="link" id="link" value={formData.link} placeholder="https://..." onChange={handleChange} className="form-input" />
+                        </div>
+
                         <hr className="lg:col-span-3 my-2"/>
+
                         <div><label htmlFor="topic" className="label">Topic</label><input type="text" name="topic" id="topic" value={formData.topic} onChange={handleChange} className="form-input" /></div>
                         <div><label htmlFor="data" className="label">Data Source</label><input type="text" name="data" id="data" value={formData.data} onChange={handleChange} className="form-input" /></div>
                         <div><label htmlFor="unitOfObservations" className="label">Unit of Observations</label><input type="text" name="unitOfObservations" id="unitOfObservations" value={formData.unitOfObservations} onChange={handleChange} className="form-input" /></div>
+                        
                         <hr className="lg:col-span-3 my-2"/>
+
                         <div className="lg:col-span-3"><label htmlFor="summary" className="label">Summary</label><textarea name="summary" id="summary" rows="3" value={formData.summary} onChange={handleChange} className="form-textarea"></textarea></div>
+                        
                         <hr className="lg:col-span-3 my-2"/>
+
                         <div><label htmlFor="status" className="label">Status</label><select name="status" id="status" value={formData.status} onChange={handleChange} className="form-input">{statusOptions.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
                         <div><label className="label">Relevance Score</label><RatingStars rating={formData.relevance} onRatingChange={handleRatingChange} /></div>
                         <div><label htmlFor="pic" className="label">Person In Charge (PIC)</label><select name="pic" id="pic" value={formData.pic} onChange={handleChange} className="form-input">{picOptions.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
